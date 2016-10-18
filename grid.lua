@@ -1,6 +1,7 @@
 local Gamestate = require 'gamestate'
 local window = require 'window'
 local menu = require 'menu'
+require 'trace'
 
 local grid = Gamestate.new()
 
@@ -10,7 +11,16 @@ function grid:init()
 	self.check2 = false
 	self.check3 = false
 	self.check4 = false
-	self.menu = menu.new({'rot1', 'rot2', 'rot3', 'rot4', 'Shuffle', 'Restart' ,'Exit'})
+	self.alg = 'Default'
+end
+
+function grid:enter(previous, alg, nPlayers, gridType)
+	self.previous = previous
+	self.alg = alg
+	self.gridType = gridType
+	self.nPlayers = nPlayers
+
+	self.menu = menu.new({'rot1', 'rot2', 'rot3', 'rot4', 'Table', 'Algorithm', 'Restart' ,'Exit'})
 	self.menu:onSelect(function(option)
 		if option == 'Exit' then
 			love.event.push("quit")
@@ -22,26 +32,23 @@ function grid:init()
 			self.check3 = not self.check3
 		elseif option == 'rot4' then
 			self.check4 = not self.check4
-		elseif option == 'Shuffle' then
-			self.pileA = initParams(self.numPlayers, self.array[6])
+		elseif option == 'Table' then
+			self.pileA = initTable(self.gridType, self.nPlayers, self.array[6])
+		elseif option == 'Algorithm' then
+			self.pileA = initParams(self.nPlayers, self.array[6])
 		elseif option == 'Restart' then
 			Gamestate.switch("update")
 		end
 	end)
-end
-
-function grid:enter(previous, numPlayers, gridType)
-	self.previous = previous
-	self.gridType = gridType
-	self.numPlayers = numPlayers
 
 	self.arrow = love.graphics.newImage('small_arrow.png')
 
-	if self.gridType == "gridA" then self.array = polarGridA(self.numPlayers) end
-	if self.gridType == "gridB" then self.array = polarGridB(self.numPlayers) end
-	if self.gridType == "gridC" then self.array = polarGridC(self.numPlayers) end
+	if self.gridType == "gridA" then self.array = polarGridA(self.nPlayers) end
+	if self.gridType == "gridB" then self.array = polarGridB(self.nPlayers) end
+	if self.gridType == "gridC" then self.array = polarGridC(self.nPlayers) end
 
-	self.pileA = initParams(self.numPlayers, self.array[6])
+	if self.alg == 'Algorithm' then self.pileA = initParams(self.nPlayers, self.array[6]) end
+	if self.alg == 'Table' then self.pileA = initTable(self.gridType, self.nPlayers, self.array[6]) end
 
 end
 
@@ -60,6 +67,10 @@ function grid:draw()
 			self.text = 'Rotate Ring 3'
 		elseif option == 'rot4' then 
 			self.text = 'Rotate Ring 4'
+		elseif option == 'Table' then
+			self.text = 'Table Shuffle'
+		elseif option == 'Algorithm' then
+			self.text = 'Algorithm Shuffle'
 		else
 			self.text = option
 		end
@@ -76,6 +87,11 @@ end
 
 function grid:leave()
 	self.text = nil
+	self.check1 = false
+	self.check2 = false
+	self.check3 = false
+	self.check4 = false
+	self.menu.selection = 0
 end
 
 function polarGridA(nPlayers)
@@ -99,14 +115,14 @@ function polarGridA(nPlayers)
 end
 
 function polarGridB(nPlayers)
-	if nplayers == 3 then
+	if nPlayers == 3 then
 		nRings = 3
 		ringOne = 4
 		ringTwo = 8
 		ringThree = 12
 		ringFour = nil
 		nTiles = ringOne + ringTwo + ringThree
-	elseif nplayers == 4 or nPlayers == 5 then
+	elseif nPlayers == 4 or nPlayers == 5 then
 		nRings = 4
 		ringOne = 4
 		ringTwo = 8
@@ -202,6 +218,66 @@ function drawPolarGrid(nRings, ringOne, ringTwo, ringThree, ringFour, pileA, rot
 	end
 end
 
+function initTable(gridType, nPlayers, nTiles)
+	if gridType == 'gridA' then
+		if nPlayers == 3 or nPlayers == 4 then
+			n1 = 1
+			n2 = 4
+			n3 = 1
+		elseif nPlayers == 5 or nPlayers == 6 then
+			n1 = 2
+			n2 = 5
+			n3 = 2
+		end
+	elseif gridType == 'gridB' then
+		if nPlayers == 3 then
+			n1 = 1
+			n2 = 3
+			n3 = 1
+		elseif nPlayers == 4 or nPlayers == 5 then
+			n1 = 2
+			n2 = 4
+			n3 = 3
+		elseif nPlayers == 6 then
+			n1 = 2
+			n2 = 6
+			n3 = 2
+		end
+	elseif gridType == 'gridC' then
+		if nPlayers == 3 or nPlayers == 4 then
+			n1 = 1
+			n2 = 4
+			n3 = 1
+		elseif nPlayers == 5 or nPlayers == 6 then
+			n1 = 2
+			n2 = 5
+			n3 = 2
+		end
+	end
+
+	pileA = {}
+
+	for i = 1, n1 do
+		pileA[#pileA+1] = 1
+	end
+
+	for i = 1, n2 do
+		pileA[#pileA+1] = 2
+	end
+
+	for i = 1, n3 do
+		pileA[#pileA+1] = 3
+	end
+
+	for i = 1, nTiles-#pileA do
+		pileA[#pileA+1] = ' '
+	end
+
+	pileA = shuffle(pileA)
+
+	return pileA
+end
+
 function initParams(nPlayers, nTiles)
 	if nPlayers == 3 then
 		minS = 8
@@ -239,9 +315,9 @@ function initParams(nPlayers, nTiles)
 
 	for i = 1,maxCB,1 do
 		if i <= minCB then
-			pileA[#pileA+1] = "C"
+			pileA[#pileA+1] = " "
 		else
-			pileB[#pileB+1] = "C"
+			pileB[#pileB+1] = " "
 		end
 	end
 

@@ -5,31 +5,24 @@ local menu = require 'menu'
 local state = Gamestate.new()
 
 function state:init()
-	self.name = 'numPlayers'
-	self.menu = menu.new({'3 Players', '4 Players', '5 Players', '6 Players', 'Exit'})
+	self.name = 'algorithm'
+	self.menu = menu.new({'Table', 'Algorithm', 'Exit'})
 	self.menu:onSelect(function(option)
 		if option == 'Exit' then
 			love.event.push("quit")
 		else
-			if option == '3 Players' then self.nPlayers = 3 end
-			if option == '4 Players' then self.nPlayers = 4 end
-			if option == '5 Players' then self.nPlayers = 5 end
-			if option == '6 Players' then self.nPlayers = 6 end
-			Gamestate.switch('algorithm', self.nPlayers, self.gridType) -- this is what happens after a player option is selected
+			Gamestate.switch('grid', option, self.nPlayers, self.gridType) -- this is what happens after a grid option is selected
 		end
 	end)
 end
 
-function state:enter(previous, arg)
+function state:enter(previous, nPlayers, gridType)
+	self.nPlayers = nPlayers
+	self.gridType = gridType
 	self.arrow = love.graphics.newImage('small_arrow.png')
-	self.splash = love.graphics.newImage('openingmenu.png') -- Placeholder image
+	self.splash = love.graphics.newImage('openingmenu.png') -- Placeholder menu image taken from Hawkthorne
 
-	self.gridType = arg
 	self.previous = previous
-end
-
-function state:keypressed(key)
-	self.menu:keypressed(key)
 end
 
 function state:update(dt)
@@ -51,11 +44,14 @@ function state:draw()
 	end
 end
 
-function state:leave()
-	self.splash = nil
-	self.arrow = nil
-
-	self.menu.selection = 0
+function state:keypressed(key)
+	self.menu:keypressed(key)
 end
 
-return state		
+function state:leave()
+	self.menu.selection = 0
+	self.splash = nil
+	self.arrow = nil
+end
+
+return state

@@ -60,6 +60,8 @@ function state:leave()
 	self.text = nil
 	self.splash = nil
 	self.arrow = nil
+
+	self.menu.selection = 0
 end
 
 return state
